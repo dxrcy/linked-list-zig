@@ -9,37 +9,98 @@ test "list works" {
 
     var list = try LinkedList(u8).init(allocator);
     defer list.deinit();
-    print_list(list);
+    inspect_list(list);
+    try expect(list.len == 0);
+    try expect(list.is_empty());
+    try expect(list.get(0) == null);
 
     try list.push_front('a');
     try list.push_front('b');
     try list.push_front('c');
-    print_list(list);
+    try list.push_front('d');
+    inspect_list(list);
+    try expect(list.len == 4);
+    try expect(!list.is_empty());
+    try expect(list.get(0) == 'd');
+    try expect(list.get(1) == 'c');
+    try expect(list.get(2) == 'b');
+    try expect(list.get(3) == 'a');
+    try expect(list.get(4) == null);
 
+    try expect(list.pop_front() == 'd');
+    inspect_list(list);
+    try expect(list.len == 3);
+    try expect(!list.is_empty());
     try expect(list.get(0) == 'c');
     try expect(list.get(1) == 'b');
     try expect(list.get(2) == 'a');
     try expect(list.get(3) == null);
 
-    const value = list.pop_front();
-    try expect(value == 'c');
-    print_list(list);
+    try list.push_back('x');
+    inspect_list(list);
+    try expect(list.len == 4);
+    try expect(!list.is_empty());
+    try expect(list.get(0) == 'c');
+    try expect(list.get(1) == 'b');
+    try expect(list.get(2) == 'a');
+    try expect(list.get(3) == 'x');
+    try expect(list.get(4) == null);
+
+    var val = list.pop_back();
+    inspect_list(list);
+    try expect(val == 'x');
+    try expect(list.len == 3);
+    try expect(!list.is_empty());
+    try expect(list.get(0) == 'c');
+    try expect(list.get(1) == 'b');
+    try expect(list.get(2) == 'a');
+    try expect(list.get(3) == null);
+
+    val = list.pop_back();
+    inspect_list(list);
+    try expect(val == 'a');
+    try expect(list.len == 2);
+    try expect(!list.is_empty());
+    try expect(list.get(0) == 'c');
+    try expect(list.get(1) == 'b');
+    try expect(list.get(2) == null);
+
+    val = list.pop_back();
+    inspect_list(list);
+    try expect(val == 'b');
+    try expect(list.len == 1);
+    try expect(!list.is_empty());
+    try expect(list.get(0) == 'c');
+    try expect(list.get(1) == null);
+
+    val = list.pop_back();
+    inspect_list(list);
+    try expect(val == 'c');
+    try expect(list.len == 0);
+    try expect(list.is_empty());
+    try expect(list.get(0) == null);
+
+    val = list.pop_back();
+    inspect_list(list);
+    try expect(val == null);
+    try expect(list.len == 0);
+    try expect(list.is_empty());
+    try expect(list.get(0) == null);
 }
 
-fn print_list(list: LinkedList(u8)) void {
-    print("\n---------- Inspect\n", .{});
-    print("- Length: {d}\n", .{list.len});
+fn inspect_list(list: LinkedList(u8)) void {
     var next = list.head;
     var i: usize = 0;
+    print("[", .{});
     while (next) |node| {
-        if (i > 5) {
-            std.debug.panic("Too many items!", .{});
+        if (i > 0) {
+            print(", ", .{});
         }
-        print("Node <{d}>\n    value = {c},\n    next = {*}\n", .{ i, node.value, node.next });
+        print("{c}", .{node.value});
         next = node.next;
         i += 1;
     }
-    print("---------- /Inspect\n\n", .{});
+    print("]\n", .{});
 }
 
 pub fn LinkedList(
@@ -81,16 +142,57 @@ pub fn LinkedList(
             self.len += 1;
         }
 
-        fn pop_front(self: *Self) ?T {
-            if (self.head) |head| {
-                const value = head.value;
-                self.head = head.next;
-                self.allocator.destroy(head);
-                self.len -= 1;
-                return value;
-            } else {
-                return null;
+        fn push_back(self: *Self, value: T) !void {
+            // Get last item, as pointer
+            var tail = &self.head;
+            while (tail.*) |node| {
+                tail = &node.next;
             }
+
+            var node = try self.allocator.create(Node);
+            node.value = value;
+            node.next = null;
+            tail.* = node;
+            self.len += 1;
+        }
+
+        fn pop_front(self: *Self) ?T {
+            // No items
+            const head = self.head orelse return null;
+            // Remove first item and return
+            const value = head.value;
+            self.head = head.next;
+            self.allocator.destroy(head);
+            self.len -= 1;
+            return value;
+        }
+
+        fn pop_back(self: *Self) ?T {
+            // No items
+            const head = self.head orelse return null;
+            // Pointer to tail node
+            // Held by second-last item, or head
+            var tail_ptr = &self.head;
+            // Last item
+            var tail = head;
+
+            // If >1 items, ie. head is not tail
+            if (head.next) |head_next| {
+                tail = head_next;
+                tail_ptr = &head.next;
+                // Find last iteem
+                while (tail.next) |tail_next| {
+                    tail_ptr = &tail.next;
+                    tail = tail_next;
+                }
+            }
+
+            // Remove last item and return
+            const value = tail.value;
+            tail_ptr.* = null;
+            self.allocator.destroy(tail);
+            self.len -= 1;
+            return value;
         }
 
         fn get(self: *const Self, index: usize) ?T {
@@ -104,6 +206,10 @@ pub fn LinkedList(
                 i += 1;
             }
             return null;
+        }
+
+        fn is_empty(self: *const Self) bool {
+            return self.len == 0;
         }
     };
 }
