@@ -1,7 +1,121 @@
 const std = @import("std");
 const print = std.debug.print;
-const mem = std.mem;
-const Allocator = mem.Allocator;
+const Allocator = std.mem.Allocator;
+
+pub fn LinkedList(
+    T: type,
+) type {
+    return struct {
+        const Self = @This();
+
+        head: ?*Node,
+        len: usize,
+        allocator: Allocator,
+
+        const Node = struct {
+            value: T,
+            next: ?*Node,
+        };
+
+        fn init(allocator: anytype) Allocator.Error!Self {
+            return Self{
+                .head = null,
+                .len = 0,
+                .allocator = allocator,
+            };
+        }
+
+        fn deinit(self: Self) void {
+            var next = self.head;
+            while (next) |node| {
+                next = node.next;
+                self.allocator.destroy(node);
+            }
+        }
+
+        // O(1)
+        fn push_front(self: *Self, value: T) !void {
+            var node = try self.allocator.create(Node);
+            node.value = value;
+            node.next = self.head;
+            self.head = node;
+            self.len += 1;
+        }
+
+        // O(n)
+        fn push_back(self: *Self, value: T) !void {
+            // Held by last item
+            var tail_ptr = &self.head;
+            while (tail_ptr.*) |node| {
+                tail_ptr = &node.next;
+            }
+
+            var node = try self.allocator.create(Node);
+            node.value = value;
+            node.next = null;
+            tail_ptr.* = node;
+            self.len += 1;
+        }
+
+        // O(1)
+        fn pop_front(self: *Self) ?T {
+            // No items
+            const head = self.head orelse return null;
+            // Remove first item and return
+            const value = head.value;
+            self.head = head.next;
+            self.allocator.destroy(head);
+            self.len -= 1;
+            return value;
+        }
+
+        // O(n)
+        fn pop_back(self: *Self) ?T {
+            // No items
+            const head = self.head orelse return null;
+            // Held by second-last item, or head if len=1
+            var tail_ptr = &self.head;
+            var tail = head;
+
+            // If len=1, ie. head is not tail
+            if (head.next) |head_next| {
+                tail = head_next;
+                tail_ptr = &head.next;
+                // Find last iteem
+                while (tail.next) |tail_next| {
+                    tail_ptr = &tail.next;
+                    tail = tail_next;
+                }
+            }
+
+            // Remove last item and return
+            const value = tail.value;
+            tail_ptr.* = null;
+            self.allocator.destroy(tail);
+            self.len -= 1;
+            return value;
+        }
+
+        // O(n)
+        fn get(self: *const Self, index: usize) ?T {
+            var next = self.head;
+            var i: usize = 0;
+            while (next) |node| {
+                if (i >= index) {
+                    return node.value;
+                }
+                next = node.next;
+                i += 1;
+            }
+            return null;
+        }
+
+        // O(1)
+        fn is_empty(self: *const Self) bool {
+            return self.len == 0;
+        }
+    };
+}
 
 test "list works" {
     const expect = std.testing.expect;
@@ -101,115 +215,4 @@ fn inspect_list(list: LinkedList(u8)) void {
         i += 1;
     }
     print("]\n", .{});
-}
-
-pub fn LinkedList(
-    T: type,
-) type {
-    return struct {
-        const Self = @This();
-
-        head: ?*Node,
-        len: usize,
-        allocator: Allocator,
-
-        const Node = struct {
-            value: T,
-            next: ?*Node,
-        };
-
-        fn init(allocator: anytype) Allocator.Error!Self {
-            return Self{
-                .head = null,
-                .len = 0,
-                .allocator = allocator,
-            };
-        }
-
-        fn deinit(self: Self) void {
-            var next = self.head;
-            while (next) |node| {
-                next = node.next;
-                self.allocator.destroy(node);
-            }
-        }
-
-        fn push_front(self: *Self, value: T) !void {
-            var node = try self.allocator.create(Node);
-            node.value = value;
-            node.next = self.head;
-            self.head = node;
-            self.len += 1;
-        }
-
-        fn push_back(self: *Self, value: T) !void {
-            // Get last item, as pointer
-            var tail = &self.head;
-            while (tail.*) |node| {
-                tail = &node.next;
-            }
-
-            var node = try self.allocator.create(Node);
-            node.value = value;
-            node.next = null;
-            tail.* = node;
-            self.len += 1;
-        }
-
-        fn pop_front(self: *Self) ?T {
-            // No items
-            const head = self.head orelse return null;
-            // Remove first item and return
-            const value = head.value;
-            self.head = head.next;
-            self.allocator.destroy(head);
-            self.len -= 1;
-            return value;
-        }
-
-        fn pop_back(self: *Self) ?T {
-            // No items
-            const head = self.head orelse return null;
-            // Pointer to tail node
-            // Held by second-last item, or head
-            var tail_ptr = &self.head;
-            // Last item
-            var tail = head;
-
-            // If >1 items, ie. head is not tail
-            if (head.next) |head_next| {
-                tail = head_next;
-                tail_ptr = &head.next;
-                // Find last iteem
-                while (tail.next) |tail_next| {
-                    tail_ptr = &tail.next;
-                    tail = tail_next;
-                }
-            }
-
-            // Remove last item and return
-            const value = tail.value;
-            tail_ptr.* = null;
-            self.allocator.destroy(tail);
-            self.len -= 1;
-            return value;
-        }
-
-        fn get(self: *const Self, index: usize) ?T {
-            var next = self.head;
-            var i: usize = 0;
-            while (next) |node| {
-                if (i >= index) {
-                    return node.value;
-                }
-                next = node.next;
-                i += 1;
-            }
-            return null;
-        }
-
-        fn is_empty(self: *const Self) bool {
-            return self.len == 0;
-        }
-    };
 }
