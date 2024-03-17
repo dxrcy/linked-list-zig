@@ -114,6 +114,22 @@ pub fn LinkedList(
         fn is_empty(self: *const Self) bool {
             return self.len == 0;
         }
+
+        // fn remove(self: *const Self, index: usize) ?T
+
+        // fn insert(self: *const Self, index: usize, value: T)
+
+        // fn front(self: *const Self) ?*const Node
+        // fn front_mut(self: *Self) ?*Node
+
+        // fn back(self: *const Self) ?*const Node
+        // fn back_mut(self: *Self) ?*Node
+
+        // fn clear(self: *Self) void
+
+        // fn append(self: *Self, other: *Self) !void
+
+        // fn contains(self: *const Self, needle: &T) bool
     };
 }
 
