@@ -16,7 +16,12 @@ test "list works" {
     try list.push_front('c');
     print_list(list);
 
-    const value = try list.pop_front();
+    try expect(list.get(0) == 'c');
+    try expect(list.get(1) == 'b');
+    try expect(list.get(2) == 'a');
+    try expect(list.get(3) == null);
+
+    const value = list.pop_front();
     try expect(value == 'c');
     print_list(list);
 }
@@ -76,7 +81,7 @@ pub fn LinkedList(
             self.len += 1;
         }
 
-        fn pop_front(self: *Self) !?T {
+        fn pop_front(self: *Self) ?T {
             if (self.head) |head| {
                 const value = head.value;
                 self.head = head.next;
@@ -86,6 +91,19 @@ pub fn LinkedList(
             } else {
                 return null;
             }
+        }
+
+        fn get(self: *const Self, index: usize) ?T {
+            var next = self.head;
+            var i: usize = 0;
+            while (next) |node| {
+                if (i >= index) {
+                    return node.value;
+                }
+                next = node.next;
+                i += 1;
+            }
+            return null;
         }
     };
 }
