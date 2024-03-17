@@ -4,7 +4,10 @@ const mem = std.mem;
 const Allocator = mem.Allocator;
 
 test "list works" {
-    var list = try List(u8).init(std.testing.allocator);
+    const expect = std.testing.expect;
+    const allocator = std.testing.allocator;
+
+    var list = try LinkedList(u8).init(allocator);
     defer list.deinit();
     print_list(list);
 
@@ -12,14 +15,16 @@ test "list works" {
     try list.push_front('b');
     try list.push_front('c');
     print_list(list);
+
+    const value = try list.pop_front();
+    try expect(value == 'c');
+    print_list(list);
 }
 
-fn print_list(list: List(u8)) void {
+fn print_list(list: LinkedList(u8)) void {
     print("\n---------- Inspect\n", .{});
+    print("- Length: {d}\n", .{list.len});
     var next = list.head;
-    if (next == null) {
-        print("(empty)\n", .{});
-    }
     var i: usize = 0;
     while (next) |node| {
         if (i > 5) {
@@ -32,13 +37,14 @@ fn print_list(list: List(u8)) void {
     print("---------- /Inspect\n\n", .{});
 }
 
-pub fn List(
+pub fn LinkedList(
     T: type,
 ) type {
     return struct {
         const Self = @This();
 
         head: ?*Node,
+        len: usize,
         allocator: Allocator,
 
         const Node = struct {
@@ -49,6 +55,7 @@ pub fn List(
         fn init(allocator: anytype) Allocator.Error!Self {
             return Self{
                 .head = null,
+                .len = 0,
                 .allocator = allocator,
             };
         }
@@ -66,6 +73,19 @@ pub fn List(
             node.value = value;
             node.next = self.head;
             self.head = node;
+            self.len += 1;
+        }
+
+        fn pop_front(self: *Self) !?T {
+            if (self.head) |head| {
+                const value = head.value;
+                self.head = head.next;
+                self.allocator.destroy(head);
+                self.len -= 1;
+                return value;
+            } else {
+                return null;
+            }
         }
     };
 }
