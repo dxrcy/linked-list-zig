@@ -3,6 +3,7 @@ const print = std.debug.print;
 const panic = std.debug.panic;
 const Allocator = std.mem.Allocator;
 
+/// Singly linked list
 pub fn LinkedList(
     T: type,
 ) type {
@@ -13,7 +14,8 @@ pub fn LinkedList(
         len: usize,
         allocator: Allocator,
 
-        const Node = struct {
+        /// Linked list node
+        pub const Node = struct {
             value: T,
             next: ?*Node,
         };
@@ -22,6 +24,7 @@ pub fn LinkedList(
             panic("Index out of bounds.", .{});
         }
 
+        /// Create a new linked list
         fn init(allocator: anytype) Allocator.Error!Self {
             return Self{
                 .head = null,
@@ -30,6 +33,7 @@ pub fn LinkedList(
             };
         }
 
+        /// Deallocate list items
         fn deinit(self: Self) void {
             var next = self.head;
             while (next) |node| {
@@ -47,7 +51,7 @@ pub fn LinkedList(
             self.len += 1;
         }
 
-        // O(n)
+        /// O(n)
         fn push_back(self: *Self, value: T) !void {
             // Held by last item
             var tail_ptr = &self.head;
@@ -62,7 +66,7 @@ pub fn LinkedList(
             self.len += 1;
         }
 
-        // O(1)
+        /// O(1)
         fn pop_front(self: *Self) ?T {
             // No items
             const head = self.head orelse return null;
@@ -101,7 +105,7 @@ pub fn LinkedList(
             return value;
         }
 
-        // O(n)
+        /// O(n)
         fn get(self: *const Self, index: usize) ?*const T {
             var next = self.head;
             var i: usize = 0;
@@ -115,18 +119,19 @@ pub fn LinkedList(
             return null;
         }
 
-        // O(1)
+        /// O(1)
         fn front(self: *const Self) ?*const T {
             const head = self.head orelse return null;
             return &head.value;
         }
 
+        /// O(1)
         fn front_mut(self: *Self) ?*T {
             const head = self.head orelse return null;
             return &head.value;
         }
 
-        // O(n)
+        /// O(n)
         fn back(self: *const Self) ?*const T {
             var next = self.head;
             while (next) |node| {
@@ -138,7 +143,7 @@ pub fn LinkedList(
             return null;
         }
 
-        // O(n)
+        /// O(n)
         fn back_mut(self: *Self) ?*T {
             var next = self.head;
             while (next) |node| {
@@ -150,13 +155,13 @@ pub fn LinkedList(
             return null;
         }
 
-        // O(1)
+        /// O(1)
         fn is_empty(self: *const Self) bool {
             return self.len == 0;
         }
 
-        // O(n)
-        // Panics if index out of bounds
+        /// O(n)
+        /// Panics if index out of bounds
         fn insert(self: *Self, index: usize, value: T) !void {
             var next = self.head;
             var i: usize = 1;
@@ -175,8 +180,8 @@ pub fn LinkedList(
             Self.indexOutOfBounds();
         }
 
-        // O(n)
-        // Panics if index out of bounds
+        /// O(n)
+        /// Panics if index out of bounds
         fn remove(self: *Self, index: usize) ?T {
             var next = self.head;
             var prev_ptr = &self.head;
