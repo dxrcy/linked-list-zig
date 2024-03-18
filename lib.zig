@@ -11,7 +11,6 @@ pub fn LinkedList(
         const Self = @This();
 
         head: ?*Node,
-        len: usize,
         allocator: Allocator,
 
         /// Linked list node
@@ -28,7 +27,6 @@ pub fn LinkedList(
         fn init(allocator: anytype) Allocator.Error!Self {
             return Self{
                 .head = null,
-                .len = 0,
                 .allocator = allocator,
             };
         }
@@ -42,13 +40,12 @@ pub fn LinkedList(
             }
         }
 
-        // O(1)
+        /// O(1)
         fn push_front(self: *Self, value: T) !void {
             var node = try self.allocator.create(Node);
             node.value = value;
             node.next = self.head;
             self.head = node;
-            self.len += 1;
         }
 
         /// O(n)
@@ -63,7 +60,6 @@ pub fn LinkedList(
             node.value = value;
             node.next = null;
             tail_ptr.* = node;
-            self.len += 1;
         }
 
         /// O(1)
@@ -74,7 +70,6 @@ pub fn LinkedList(
             const value = head.value;
             self.head = head.next;
             self.allocator.destroy(head);
-            self.len -= 1;
             return value;
         }
 
@@ -82,11 +77,11 @@ pub fn LinkedList(
         fn pop_back(self: *Self) ?T {
             // No items
             const head = self.head orelse return null;
-            // Held by second-last item, or head if len=1
+            // Held by second-last item, or head if length=1
             var tail_ptr = &self.head;
             var tail = head;
 
-            // If len=1, ie. head is not tail
+            // If length=1, ie. head is not tail
             if (head.next) |head_next| {
                 tail = head_next;
                 tail_ptr = &head.next;
@@ -101,8 +96,18 @@ pub fn LinkedList(
             const value = tail.value;
             tail_ptr.* = null;
             self.allocator.destroy(tail);
-            self.len -= 1;
             return value;
+        }
+
+        /// O(n)
+        pub fn len(self: *const Self) usize {
+            var length: usize = 0;
+            var next = self.head;
+            while (next) |node| {
+                length += 1;
+                next = node.next;
+            }
+            return length;
         }
 
         /// O(n)
@@ -155,9 +160,9 @@ pub fn LinkedList(
             return null;
         }
 
-        /// O(1)
+        /// O(n)
         fn is_empty(self: *const Self) bool {
-            return self.len == 0;
+            return self.len() == 0;
         }
 
         /// O(n)
@@ -171,7 +176,6 @@ pub fn LinkedList(
                     node.value = value;
                     node.next = prev.next;
                     prev.next = node;
-                    self.len += 1;
                     return;
                 }
                 next = prev.next;
@@ -192,7 +196,6 @@ pub fn LinkedList(
                     prev_ptr.* = next;
                     const value = node.value;
                     self.allocator.destroy(node);
-                    self.len -= 1;
                     return value;
                 }
                 prev_ptr = &node.next;
@@ -218,7 +221,7 @@ test "list works" {
     var list = try LinkedList(u8).init(allocator);
     defer list.deinit();
     inspect_list(list);
-    try expect(list.len == 0);
+    try expect(list.len() == 0);
     try expect(list.is_empty());
     try expect(list.get(0) == null);
 
@@ -227,7 +230,7 @@ test "list works" {
     try list.push_front('c');
     try list.push_front('d');
     inspect_list(list);
-    try expect(list.len == 4);
+    try expect(list.len() == 4);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'd');
     try expect(list.get(1).?.* == 'c');
@@ -237,7 +240,7 @@ test "list works" {
 
     try expect(list.pop_front() == 'd');
     inspect_list(list);
-    try expect(list.len == 3);
+    try expect(list.len() == 3);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'c');
     try expect(list.get(1).?.* == 'b');
@@ -246,7 +249,7 @@ test "list works" {
 
     try list.push_back('x');
     inspect_list(list);
-    try expect(list.len == 4);
+    try expect(list.len() == 4);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'c');
     try expect(list.get(1).?.* == 'b');
@@ -257,7 +260,7 @@ test "list works" {
     var item = list.pop_back();
     inspect_list(list);
     try expect(item == 'x');
-    try expect(list.len == 3);
+    try expect(list.len() == 3);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'c');
     try expect(list.get(1).?.* == 'b');
@@ -267,7 +270,7 @@ test "list works" {
     item = list.pop_back();
     inspect_list(list);
     try expect(item == 'a');
-    try expect(list.len == 2);
+    try expect(list.len() == 2);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'c');
     try expect(list.get(1).?.* == 'b');
@@ -276,7 +279,7 @@ test "list works" {
     item = list.pop_back();
     inspect_list(list);
     try expect(item == 'b');
-    try expect(list.len == 1);
+    try expect(list.len() == 1);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'c');
     try expect(list.get(1) == null);
@@ -284,14 +287,14 @@ test "list works" {
     item = list.pop_back();
     inspect_list(list);
     try expect(item == 'c');
-    try expect(list.len == 0);
+    try expect(list.len() == 0);
     try expect(list.is_empty());
     try expect(list.get(0) == null);
 
     item = list.pop_back();
     inspect_list(list);
     try expect(item == null);
-    try expect(list.len == 0);
+    try expect(list.len() == 0);
     try expect(list.is_empty());
     try expect(list.get(0) == null);
 
@@ -299,7 +302,7 @@ test "list works" {
     try list.push_front('c');
     try list.push_front('d');
     inspect_list(list);
-    try expect(list.len == 3);
+    try expect(list.len() == 3);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'd');
     try expect(list.get(1).?.* == 'c');
@@ -308,7 +311,7 @@ test "list works" {
 
     try list.insert(2, 'b');
     inspect_list(list);
-    try expect(list.len == 4);
+    try expect(list.len() == 4);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'd');
     try expect(list.get(1).?.* == 'c');
@@ -327,9 +330,9 @@ test "list works" {
     const back = list.back_mut();
     back.?.* = 'x';
     try expect(list.back().?.* == 'x');
-    try expect(list.get(list.len - 1).?.* == 'x');
+    try expect(list.get(list.len() - 1).?.* == 'x');
     inspect_list(list);
-    try expect(list.len == 4);
+    try expect(list.len() == 4);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'e');
     try expect(list.get(1).?.* == 'c');
@@ -340,7 +343,7 @@ test "list works" {
     item = list.remove(2);
     inspect_list(list);
     try expect(item == 'b');
-    try expect(list.len == 3);
+    try expect(list.len() == 3);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'e');
     try expect(list.get(1).?.* == 'c');
@@ -350,7 +353,7 @@ test "list works" {
     item = list.remove(2);
     inspect_list(list);
     try expect(item == 'x');
-    try expect(list.len == 2);
+    try expect(list.len() == 2);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'e');
     try expect(list.get(1).?.* == 'c');
@@ -359,7 +362,7 @@ test "list works" {
     item = list.remove(0);
     inspect_list(list);
     try expect(item == 'e');
-    try expect(list.len == 1);
+    try expect(list.len() == 1);
     try expect(!list.is_empty());
     try expect(list.get(0).?.* == 'c');
     try expect(list.get(1) == null);
@@ -367,7 +370,7 @@ test "list works" {
     item = list.remove(0);
     inspect_list(list);
     try expect(item == 'c');
-    try expect(list.len == 0);
+    try expect(list.len() == 0);
     try expect(list.is_empty());
     try expect(list.get(0) == null);
 }
