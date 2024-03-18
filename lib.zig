@@ -24,7 +24,7 @@ pub fn LinkedList(
         }
 
         /// Create a new linked list
-        pub fn init(allocator: anytype) Allocator.Error!Self {
+        pub fn init(allocator: anytype) Self {
             return Self{
                 .head = null,
                 .allocator = allocator,
@@ -40,8 +40,21 @@ pub fn LinkedList(
             }
         }
 
+        /// Create a new linked list, from an array slice
+        /// O(n)
+        pub fn fromSlice(items: []const T, allocator: anytype) Allocator.Error!Self {
+            var list = Self.init(allocator);
+            var i = items.len;
+            while (i > 0) {
+                i -= 1;
+                const item = items[i];
+                try list.pushFront(item);
+            }
+            return list;
+        }
+
         /// O(1)
-        pub fn pushFront(self: *Self, value: T) !void {
+        pub fn pushFront(self: *Self, value: T) Allocator.Error!void {
             var node = try self.allocator.create(Node);
             node.value = value;
             node.next = self.head;
@@ -49,7 +62,7 @@ pub fn LinkedList(
         }
 
         /// O(n)
-        pub fn pushBack(self: *Self, value: T) !void {
+        pub fn pushBack(self: *Self, value: T) Allocator.Error!void {
             // Held by last item
             var tail_ptr = &self.head;
             while (tail_ptr.*) |node| {
@@ -167,7 +180,7 @@ pub fn LinkedList(
 
         /// O(n)
         /// Panics if index out of bounds
-        pub fn insert(self: *Self, index: usize, value: T) !void {
+        pub fn insert(self: *Self, index: usize, value: T) Allocator.Error!void {
             var next = self.head;
             var i: usize = 1;
             while (next) |prev| {
@@ -208,7 +221,7 @@ pub fn LinkedList(
 
         // pub fn clear(self: *Self) void
 
-        // pub fn append(self: *Self, other: *Self) !void
+        // pub fn append(self: *Self, other: *Self) Allocator.Error!void
 
         // pub fn contains(self: *const Self, needle: &T) bool
     };
@@ -218,7 +231,7 @@ test "list works" {
     const expect = std.testing.expect;
     const allocator = std.testing.allocator;
 
-    var list = try LinkedList(u8).init(allocator);
+    var list = LinkedList(u8).init(allocator);
     defer list.deinit();
     inspect_list(list);
     try expect(list.len() == 0);
@@ -373,6 +386,16 @@ test "list works" {
     try expect(list.len() == 0);
     try expect(list.isEmpty());
     try expect(list.get(0) == null);
+
+    const list2 = try LinkedList(u8).fromSlice(&[_]u8{ 'a', 'b', 'c' }, allocator);
+    defer list2.deinit();
+    inspect_list(list2);
+    try expect(list2.len() == 3);
+    try expect(!list2.isEmpty());
+    try expect(list2.get(0).?.* == 'a');
+    try expect(list2.get(1).?.* == 'b');
+    try expect(list2.get(2).?.* == 'c');
+    try expect(list2.get(3) == null);
 }
 
 fn inspect_list(list: LinkedList(u8)) void {
